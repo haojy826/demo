@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Double Marker Demo</title>
+    <!--引入three.js库及帧查看组件   three.js是前端实现三维显示的库，用它来创建三维模型并添加页面（场景）中显示。stats是帧数查看组件，它用来检测前端动画的运行状态。-->
+    <script src='build/three.js'></script>
+    <script src='build/stats.min.js'></script>
+    <!--引入 jsartookit  jsartoolkit是实现摄像头的调用以及摄像头所获取影像的分析 -->
+    <script src='build/artoolkit.min.js'></script>
+    <script src='build/artoolkit.api.js'></script>
+    <!-- 引入 threex.artoolkit   three.js与jsartoolkit本来毫无关系，而threex.artoolkit把他们联系在一起，这是AR.js库的精髓所在。-->
+    <script src='build/threex-artoolkitsource.js'></script>
+    <script src='build/threex-artoolkitcontext.js'></script>
+    <script src='build/threex-artoolkitprofile.js'></script>
+    <script src='build/threex-arbasecontrols.js'></script>
+    <script src='build/threex-armarkercontrols.js'></script>
+    <script src='build/threex-arsmoothedcontrols.js'></script>
+    <script>THREEx.ArToolkitContext.baseURL = ''</script>
+</head>
+<body>
+<!--引入模型需要的库-->
+<script src="build/ColladaLoader.js"></script>
+<script src="build/OrbitControls.js"></script>
+<script src="build/Detector.js"></script>
+<script>
+    /*    three.js要素初始化    */
+    //使用WebGL初始化渲染器
+    var renderer=new THREE.WebGLRenderer({
+        alpha:true//开启背景透明
+    });
+    renderer.setClearColor(new THREE.Color('lightgrey'),0);//设置背景颜色，和透明度
+    renderer.setSize(window.innerWidth,window.innerHeight);//设置渲染尺寸为页面大小
+    renderer.domElement.style.position='absolute';
+    renderer.domElement.style.top='0px';
+    renderer.domElement.style.left='0px';
+    document.body.appendChild(renderer.domElement);//使用WebGLRenderer生成canvas元素
+    var onRenderFcts=[]; //渲染处理函数组初始化
+    var scene=new THREE.Scene();//初始化场景
+    /*设置光源，位置不同，方向光作用于物体的面也不同，看到的物体各个面的颜色也不同*/
+    var ambient=new THREE.AmbientLight(0x666666); //设置环境光
+    scene.add(ambient);//追加光源到场景
+    var directctionalLight=new THREE.DirectionalLight(0x887766);//设置平行光源
+    directctionalLight.position.set(-1,1,1).normalize();//设置光源向量
+    scene.add(directctionalLight);//追加光源到场景
+
+
+
+    /* 开启摄像头 */
+    //初始化相机添加到场景
+    var camera=new THREE.Camera();
+    scene.add(camera);
+    //处理 arToolkitSource 调用打开相机事件，由THREEx提供
+    var arToolkitSource=new THREEx.ArToolkitSource({
+        //从webcam中读取
+        sourceType:'webcam'
+    });
+    arToolkitSource.init(function onReady() {
+        onResize();
+    });
+    //处理重新调整大小后正常显示
+    window.addEventListener('resize',function () {
+        onResize();
+    });
+    function onResize() {
+        arToolkitSource.onResizeElement();
+        arToolkitSource.copyElementSizeTo(renderer.domElement);
+        if(arToolkitContext.arController!==null){
+            arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
+        }
+    }
+
+
+
+    /*初始化 ArcToolkit环境, 相机内部场景   这一步的作用是通过Canvas来联系摄像头与three.js，即在摄像界面上添加画板，以实现在摄像界面中作图的目的。*/
+    //初始化 arToolkitContext
+    var arToolkitContext=new THREEx.ArToolkitContext({
+        //相机参数设置
+        cameraParametersUrl:THREEx.ArToolkitContext.baseURL+'data/camera_para.dat',//路径是摄像机参数文件
+        detectionMode:'mono',
+        //canvasWidth:80*3,
+        //canvasHeight:60*3,
+        //maxDetectionRate:30, //最大旋转角度
+    });
+    arToolkitContext.init(function onCompleted() {
+        //将投影矩阵复制到相机上
+        camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
+    });
+    //更新每一帧的ARToolkit
+    onRenderFcts.push(function () {
+        if(arToolkitSource.ready===false) return;
+        arToolkitContext.update(arToolkitSource.domElement)
+    });
+
+
+   ////////
+    /* 创建识别AR 标记 */
+    //创建一个ArMakerControls
+    var markerRoot=new THREE.Group(); //用threejs的点集合初始化。
+    scene.add(markerRoot);
+    var markerControls=new THREEx.ArMarkerControls(arToolkitContext,markerRoot,{//在场景中搭建很多不同的东西时把这些场景放进一个THREE.GROUP
+        type:'pattern',
+        patternUrl:THREEx.ArToolkitContext.baseURL+'arcode/pattern-marker (4).patt',
+    });
+    //建立一个smoothedControls  旋转
+    var smoothedRoot=new  THREE.Group();
+    scene.add(smoothedRoot);
+    var smoothedControls=new THREEx.ArSmoothedControls(smoothedRoot,{
+        lerpPosition:0.4,
+        lerpQuaternion:0.3,
+        lerpScale:1,
+    });
+    onRenderFcts.push(function (delta) {
+        smoothedControls.update(markerRoot)
+    });
+    smoothedControls.addEventListener('becameVisible',function () {
+        console.log('becameVisible event notified')
+    });
+    /*将物体添加到场景中*/
+    //添加物体
+    var arWorldRoot=smoothedRoot;
+    //var mesh=new THREE.AxisHelper();
+    //arWorldRoot.add(mesh);
+    // 加载collada模型
+    var loader = new THREE.ColladaLoader();//导入加载器
+    loader.load( 'models/collada/pump/pump.dae', function ( collada ) {//加载模型
+        //调整对象状态
+        var animations = collada.animations;
+        var avatar = collada.scene;
+        avatar.rotation.x=Math.PI;
+        avatar.rotation.z=Math.PI;
+        avatar.scale.set(0.03,0.03,0.03);//设置模型大小
+        mixer = new THREE.AnimationMixer( avatar );//显示模型
+        arWorldRoot.add( avatar );
+        var action = mixer.clipAction( animations[ 0 ] ).play();
+        onRenderFcts.push(function () {
+            avatar.rotation.z+=0.02*Math.PI;
+        })
+    } );
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    /* 创建识别AR 标记 */
+    //创建一个ArMakerControls
+    var markerRoot1=new THREE.Group(); //用threejs的点集合初始化。
+    scene.add(markerRoot1);
+    var markerControls1=new THREEx.ArMarkerControls(arToolkitContext,markerRoot1,{//在场景中搭建很多不同的东西时把这些场景放进一个THREE.GROUP
+        type:'pattern',
+        patternUrl:THREEx.ArToolkitContext.baseURL+'arcode/pattern-marker (2).patt',
+    });
+    //建立一个smoothedControls  旋转
+    var smoothedRoot1=new  THREE.Group();
+    scene.add(smoothedRoot1);
+    var smoothedControls1=new THREEx.ArSmoothedControls(smoothedRoot1,{
+        lerpPosition:0.4,
+        lerpQuaternion:0.3,
+        lerpScale:1,
+    });
+    onRenderFcts.push(function (delta1) {
+        smoothedControls1.update(markerRoot1)
+    });
+    smoothedControls1.addEventListener('becameVisible',function () {
+        console.log('becameVisible event notified')
+    });
+    /*将物体添加到场景中*/
+    //添加物体
+    var arWorldRoot1=smoothedRoot1;
+    //var mesh=new THREE.AxisHelper();
+    //arWorldRoot.add(mesh);
+    // 加载collada模型
+    var loader1 = new THREE.ColladaLoader();//导入加载器
+    loader1.load( 'models/collada/stormtrooper/stormtrooper.dae', function ( collada1 ) {//加载模型
+        //调整对象状态
+        var animations1 = collada1.animations;
+        var avatar1 = collada1.scene;
+        avatar1.rotation.x=Math.PI;
+        avatar1.rotation.z=Math.PI;
+        avatar1.scale.set(0.3,0.3,0.3);//设置模型大小
+        var mixer1 = new THREE.AnimationMixer( avatar1 );//显示模型
+        arWorldRoot1.add( avatar1 );
+        var action1 = mixer1.clipAction( animations1[ 0 ] ).play();
+        onRenderFcts.push(function () {
+            avatar1.rotation.z+=0.02*Math.PI;
+        })
+    } );
+
+    /////////////////////////////////////////
+    /*渲染整个three.js画面*/
+    //渲染率查看器
+    var stats=new Stats();//初始化统计对象
+    document.body.appendChild(stats.dom);//将上面创建的stats.dom元素加入到body的尾部
+    //渲染场景到页面中
+    onRenderFcts.push(function () {
+        renderer.render(scene,camera );
+        stats.update();
+    });
+    //进行渲染循环
+    var lastTimeMsec=null;
+    requestAnimationFrame(function animate(nowMsec){
+        //保持循环
+        requestAnimationFrame(animate);
+        //测量时间
+        lastTimeMsec=lastTimeMsec||nowMsec-1000/60;
+        var deltaMsec=Math.min(200,nowMsec-lastTimeMsec);
+        //调用每一个更新函数
+        onRenderFcts.forEach(function (onRenderFct) {
+            onRenderFct(deltaMsec/1000,nowMsec/1000)//场景的动态效果都通过onRenderFct函数数组来实现。若要实现动画效果，我们要把实现动态的方法添加到数组中。
+        })
+    })
+</script>
+</body>
+</html>

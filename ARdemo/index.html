@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AR Demo</title>
+    <style type="text/css">
+        *{margin:0px; padding:0px;}
+        div{width:100%;}
+        .top{height:100px; background:#FFF0F5;}
+        .mid{height:150px; background:#FFF0F5;}
+        .nav{height:100%;position:absolute;}
+        .left,
+        .right {
+            float: left;
+            width: 50%;
+            height: 100%;
+        }
+        .left { background-color: #FFF0F5; }
+        .right { background-color: #FFF0F5; }
+        h1 {color:black;
+            text-align: center;
+            line-height:100px;}
+        h2 {color:black;
+            text-align: center;
+            line-height:100px;}
+       h3 {color:black;
+            text-align: center;}
+        .example {
+            display: inline-block;
+            width: 260px;
+            min-height: 100px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            vertical-align: top;
+            margin: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="top">
+    <h1>基于WebGL的增强现实演示程序的设计与实现</h1>
+</div>
+<div class="mid">
+    <h1>三维立体增强现实---AR.js</h1>
+</div>
+<div class="nav">
+    <div class="left">
+        <div class="example" style="float:right">
+            <a href="Chopper.html">
+             <h3>静态3D模型</h3>
+            </a>
+            <br/>
+            <p>识别二维码Marker</p>
+            <p>显示一个静态3D模型</p>
+        </div>
+        <br/>
+
+        <div class="example"  style="float:right">
+            <a href="OneMarkerTwoDemo.html">
+                <h3>静态3D模型</h3>
+            </a>
+            <br/>
+            <p>识别二维码Marker</p>
+            <p>显示多个静态3D模型</p>
+        </div>
+    </div>
+    <div class="right">
+        <div class="example">
+            <a href="Pump.html">
+                <h3>动态3D模型</h3>
+            </a>
+            <br/>
+            <p>识别图片Marker</p>
+            <p>显示一个动态3D模型</p>
+        </div>
+        <br/>
+
+        <div class="example">
+            <a href="DoubleMarker.html">
+                <h3>动态3D模型</h3>
+            </a>
+            <br/>
+            <p>识别多个图片Marker</p>
+            <p>显示多个动态3D模型</p>
+        </div>
+    </div>
+</div>
+</body>
+</html>

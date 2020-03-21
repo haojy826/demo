@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Chopper Demo</title>
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<!-- 引入three.js 库 及帧查看组件-->
+<script src="build/three.js"></script>
+<script src="build/stats.js"></script>
+<!-- 引入ar.js库 -->
+<script src="build/ar.js"></script>
+<script src="build/MTLLoader.js"></script>
+<script src="build/OBJLoader.js"></script>
+<body style='margin : 0px; overflow: hidden; font-family: monospace;-webkit-transform:translate3d(0,0,0);'  >
+<div style='position: absolute; top: 10px; width:100%; text-align: center; z-index: 1;'> 
+	<div id="Stats-output">
+	</div>
+</div>
+<script>
+        var obj;
+        //fps监测
+        var stats = initStats();//初始化统计对象
+        function initStats() {
+            var stats = new Stats();
+            stats.setMode(0); // 0: fps, 1: ms  设置统计模式
+            // 统计信息显示在左上角
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.left = '0px';
+            stats.domElement.style.top = '0px';
+            //将统计对象添加到对应的<div>元素中
+            document.getElementById("Stats-output").appendChild(stats.domElement);
+            return stats;
+        }
+    /*开启webgl渲染器*/
+    var renderer	= new THREE.WebGLRenderer({
+        antialias: true,                                	//开启反锯齿
+        alpha: true                                      	//开启背景透明
+    });
+    renderer.setClearColor(new THREE.Color('lightgrey'), 0);//设置背景颜色和透明度
+    renderer.setSize( window.innerWidth, window.innerHeight );//设置渲染尺寸为页面大小
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.top = '0px';
+    renderer.domElement.style.left = '0px';
+    document.body.appendChild(renderer.domElement);//使用WebGLRenderer生成canvas元素
+		var onRenderFcts= [];//渲染处理函数组初始化
+		var scene	= new THREE.Scene();// 初始化场景
+    /*设置光源，位置不同，方向光作用于物体的面也不同，看到的物体各个面的颜色也不同*/
+    var light = new THREE.DirectionalLight(0xffffff,1.0);//设置平行光源
+	light.position.set(0,30,40);//设置光源向量
+    light.castShadow = true; // 启用阴影选项
+    scene.add(light);//追加光源到场景
+		 var ambilight = new THREE.AmbientLight(0xffffff,0.2);//设置环境光
+    scene.add(ambilight);//追加光源到场景
+    // 初始化摄像机位置
+     camera=new THREE.Camera();
+    scene.add(camera);
+    //处理arToolkitSource
+    var arToolkitSource = new THREEx.ArToolkitSource({});
+    arToolkitSource.init(function onReady(){
+        onResize()
+    });
+    //处理重新调整大小后正常显示
+    window.addEventListener('resize', function(){
+        onResize()
+    });
+    function onResize(){
+        arToolkitSource.onResize();
+        arToolkitSource.copySizeTo(renderer.domElement);
+        if( arToolkitContext.arController !== null ){
+            arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)
+        }
+    }
+    //初始化arToolkitContext
+    // 创建 arToolkitContext
+    var arToolkitContext = new THREEx.ArToolkitContext({
+        cameraParametersUrl:  'data/camera_para.dat',
+        detectionMode: 'mono',
+    });
+    arToolkitContext.init(function onCompleted(){
+        // 将投影矩阵复制到相机上
+        camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+    });
+    // 更新每一帧的ARToolkit
+    onRenderFcts.push(function(){
+        if( arToolkitSource.ready === false )	return;
+        arToolkitContext.update( arToolkitSource.domElement );
+        scene.visible = camera.visible
+    });
+    // 初始化相机控制
+    var markerControls = new THREEx.ArMarkerControls(arToolkitContext,camera, {//在场景中搭建很多不同的东西时可以把这些场景放进一个THREE.GROUP,将camera替换为THREE.GROUP传入ArMarkerControls
+        type : 'pattern',
+        patternUrl : 'arcode/pattern-marker1.td',//绑定二维码的标识文件路径
+        changeMatrixMode: 'cameraTransformMatrix',//控制相机
+    });
+        scene.visible = false;
+    onRenderFcts.push(function(delta){
+    });
+
+
+        /*three.js加载OBJ模型*/
+        //加载过程回调函数
+        var onProgress = function ( xhr ) {
+            if ( xhr.lengthComputable ) {
+                var percentComplete = xhr.loaded / xhr.total * 100;
+                console.log( Math.round(percentComplete, 2) + '% downloaded' );//控制台
+            }
+        };
+        //加载出错回调函数
+        var onError = function ( xhr ) { };
+        //加载模型
+        var mtlLoader = new THREE.MTLLoader();
+        mtlLoader.setPath( 'models/obj/chopper/' );//设置MTL文件所在路径
+        mtlLoader.load( 'chopper.mtl', function( materials ) {
+            materials.preload();
+            var objLoader = new THREE.OBJLoader();
+            objLoader.setMaterials( materials );//设置obj使用的材质贴图
+            objLoader.setPath( 'models/obj/chopper/' );//设置obj文件所在路径
+            objLoader.load( 'chopper.obj', function ( object ) {
+                obj=object;
+                scene.add( object );
+                object.position.set(0,0,0);//位置为坐标原点
+                object.scale.set(0.01,0.01,0.01);//缩小100倍
+                //var axes=new THREE.AxisHelper(10);//坐标轴辅助
+                //scene.add(axes);
+            }, onProgress, onError );
+        });
+
+
+    /*渲染整个画面*/
+       // 渲染场景到页面中
+    onRenderFcts.push(function(){
+        renderer.render( scene, camera );
+        stats.update();//通知stats已经被重新渲染
+    });
+        //进行渲染循环
+    var lastTimeMsec= null;
+    requestAnimationFrame(function animate(nowMsec){
+        // 保持循环
+        requestAnimationFrame( animate );
+		//测量时间
+        lastTimeMsec	= lastTimeMsec || nowMsec-1000/60;
+        var deltaMsec	= Math.min(200, nowMsec - lastTimeMsec);
+        lastTimeMsec	= nowMsec;
+        // 调用每一个更新函数
+        onRenderFcts.forEach(
+            function(onRenderFct){
+            onRenderFct(deltaMsec/1000, nowMsec/1000)
+        })
+    });
+
+</script></body>

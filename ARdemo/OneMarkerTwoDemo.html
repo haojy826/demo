@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<title>One Marker Demo</title>
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<!-- three.js library -->
+<script src='build/three.js'></script>
+<script src="build/stats.min.js"></script>
+<script src="build/build/ColladaLoader.js"></script>
+<script src="build/build/Animation.js"></script>
+<script src="build/build/AnimationHandler.js"></script>
+<script src="build/build/KeyFrameAnimation.js"></script>
+<!-- jsartookit -->
+<script src="build/build/artoolkit.min.js"></script>
+<script src="build/build/artoolkit.api.js"></script>
+<!-- include threex.artoolkit -->
+<script src="build/build/threex-artoolkitsource.js"></script>
+<script src="build/build/threex-artoolkitcontext.js"></script>
+<script src="build/build/threex-artoolkitprofile.js"></script>
+<script src="build/build/threex-armarkercontrols.js"></script>
+
+<script>THREEx.ArToolkitContext.baseURL = ''</script>
+<body style='margin : 0px; overflow: hidden; font-family: monospace;'>
+<div style='position: absolute; top: 10px; width:100%; text-align: center;z-index:1;'>
+</div><script>
+    var renderer	= new THREE.WebGLRenderer({
+        alpha: true
+    });
+    renderer.setClearColor(new THREE.Color('lightgrey'), 0);
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.top = '0px';
+    renderer.domElement.style.left = '0px';
+    document.body.appendChild( renderer.domElement );
+    var onRenderFcts= [];
+    var scene	= new THREE.Scene();
+    var ambient = new THREE.AmbientLight( 0x666666 );
+    scene.add( ambient );
+    var directionalLight = new THREE.DirectionalLight( 0x887766 );
+    directionalLight.position.set( -1, 1, 1 ).normalize();
+    scene.add( directionalLight );
+    var camera = new THREE.Camera();
+    scene.add(camera);
+    var arToolkitSource = new THREEx.ArToolkitSource({
+        sourceType : 'webcam',
+    });
+    arToolkitSource.init(function onReady(){
+        arToolkitSource.onResize(renderer.domElement)
+    });
+    window.addEventListener('resize', function(){
+        arToolkitSource.onResize(renderer.domElement)
+    });
+    var arToolkitContext = new THREEx.ArToolkitContext({
+        cameraParametersUrl: 'data/camera_para.dat',
+        detectionMode: 'mono',
+        canvasWidth: 80*3,
+        canvasHeight: 60*3,
+    });
+    arToolkitContext.init(function onCompleted(){
+        camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+    });
+    onRenderFcts.push(function(){
+        if( arToolkitSource.ready === false )	return;
+        arToolkitContext.update( arToolkitSource.domElement )
+    });
+    var markerRoot = new THREE.Group;
+    scene.add(markerRoot);
+    var artoolkitMarker = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
+        type : 'pattern',
+        patternUrl : 'arcode/pattern-marker2.td',
+    });
+    //导入第一个模型
+    //var mesh = new THREE.AxisHelper();//显示坐标轴
+    //markerRoot.add( mesh );
+    var dae;
+    var loader = new THREE.ColladaLoader();
+    loader.options.convertUpAxis = true;
+    loader.load( 'models/collada/stormtrooper/stormtrooper.dae', function ( collada ) {
+        dae = collada.scene;
+        dae.traverse( function ( child ) {
+            if ( child instanceof THREE.SkinnedMesh ) {
+                var animation = new THREE.Animation( child, child.geometry.animation );
+                animation.play();
+            }
+        } );
+        dae.scale.x = dae.scale.y = dae.scale.z = 0.3;
+        markerRoot.add( dae );
+        onRenderFcts.push(function(delta){
+            //mesh.rotation.x += delta * Math.PI;
+            dae.updateMatrix();
+        })
+    } );
+
+   //导入第二个模型
+    //var mesh1 = new THREE.AxisHelper();//显示坐标轴
+    //markerRoot.add( mesh1 );
+    var dae1;
+    var loader1 = new THREE.ColladaLoader();
+    loader1.options.convertUpAxis = true;
+    loader1.load( 'models/collada/stormtrooper/stormtrooper.dae', function ( collada1 ) {
+        dae1 = collada1.scene;
+        dae1.traverse( function ( child1 ) {
+            if ( child1 instanceof THREE.SkinnedMesh ) {
+                var animation1 = new THREE.Animation( child1, child1.geometry.animation );
+                animation1.play();
+            }
+        } );
+        dae1.scale.x = dae1.scale.y = dae1.scale.z = 0.1;
+        markerRoot.add( dae1 );
+        onRenderFcts.push(function(delta1){
+            //mesh.rotation.x += delta1 * Math.PI;
+            dae1.updateMatrix();
+        });
+    } );
+////////////////////////////////////////////////////////////
+    //显示FPS
+    var stats = new Stats();
+    document.body.appendChild( stats.dom );
+    onRenderFcts.push(function(){
+        renderer.render( scene, camera );
+        stats.update();
+    });
+    //渲染整体
+    var lastTimeMsec= null;
+    requestAnimationFrame(function animate(nowMsec){
+        requestAnimationFrame( animate );
+        lastTimeMsec	= lastTimeMsec || nowMsec-1000/60;
+        var deltaMsec	= Math.min(200, nowMsec - lastTimeMsec);
+        lastTimeMsec	= nowMsec;
+        onRenderFcts.forEach(function(onRenderFct){
+            onRenderFct(deltaMsec/1000, nowMsec/1000)
+        });
+    });
+
+</script></body>
