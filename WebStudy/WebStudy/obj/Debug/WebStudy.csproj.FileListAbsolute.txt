@@ -1,0 +1,6 @@
+D:\software_install\vs_save\WebStudy\WebStudy\bin\WebStudy.dll.config
+D:\software_install\vs_save\WebStudy\WebStudy\bin\WebStudy.dll
+D:\software_install\vs_save\WebStudy\WebStudy\bin\WebStudy.pdb
+D:\software_install\vs_save\WebStudy\WebStudy\obj\Debug\WebStudy.csprojResolveAssemblyReference.cache
+D:\software_install\vs_save\WebStudy\WebStudy\obj\Debug\WebStudy.dll
+D:\software_install\vs_save\WebStudy\WebStudy\obj\Debug\WebStudy.pdb
